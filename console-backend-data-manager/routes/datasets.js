@@ -63,6 +63,33 @@ router.get('/', cors(corsOptions), function(req, res) {
   });
 });
 
+
+router.get('/arch', cors(corsOptions), function(req, res) {
+	// get list of packages asynchronously
+  var getDatasets = function() {
+    var deferred = Q.defer();
+    var datasetsApi = config.dataset_manager.host + config.dataset_manager.API.datasets + '/arch';
+    logger.info("get datasets archival list:", datasetsApi);
+    HTTP.request({ url: datasetsApi }).then(function successCallback(res) {
+      return res.body.read().then(function(bodyStream) {
+        var body = JSON.parse(bodyStream.toString('UTF-8'));
+        return deferred.resolve(body);
+      });
+    }, function errorCallback(error) {
+      logger.error("datasets available error response", error);
+      deferred.reject('error ' + error);
+    });
+
+    return deferred.promise;
+  };
+
+  var promise = Q.all([getDatasets()]);
+  promise.then(function(results) {
+    logger.info('datasets: ' + JSON.stringify(results[0]));
+    res.json(results[0]);
+  });
+});
+
 /* GET dataset by id. */
 router.get('/:id', cors(corsOptions), function(req, res) {
   var getDatasetDetails = function(id) {
@@ -108,6 +135,32 @@ router.get('/:id', cors(corsOptions), function(req, res) {
  * {"policy":"size","max_size_gigabytes":10}
  */
 router.options('/:id', cors()); // enable pre-flight request for PUT request
+router.put('/retrieve', cors(), function(req, res) {
+  logger.info('Got put request: ' + JSON.stringify(req.body));
+  var message = req.body;
+  logger.debug("PUT API body", message);
+  var datasetApi = config.dataset_manager.host + config.dataset_manager.API.datasets + '/retrieve';
+  var mode = message.mode;
+  var policy = message.policy;
+
+    var request = {
+      url: datasetApi,
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: [JSON.stringify(message)]
+    };
+    logger.debug('request: ', JSON.stringify(request));
+    HTTP.request(request).then(function success(response) {
+      logger.info(request.method, request.url, "successful: ", response.status);
+      res.sendStatus(200);
+    }, function error(error) {
+      logger.error(request.method, request.url, "failed: ", error.status);
+      res.sendStatus(error.status);
+    });
+});
+
 router.put('/:id', cors(), function(req, res) {
   logger.info('Got put request: ' + JSON.stringify(req.body));
   var datasetId = req.params.id;
@@ -145,3 +198,4 @@ router.put('/:id', cors(), function(req, res) {
 });
 
 module.exports = router;
+
