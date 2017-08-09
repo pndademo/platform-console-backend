@@ -63,9 +63,12 @@ router.get('/', cors(corsOptions), function(req, res) {
   });
 });
 
-
+/**
+ * it will get list of available archive files from archive repo path.
+ * response JSON { id: repo_path, path: relative path of archive file}
+ */
 router.get('/arch', cors(corsOptions), function(req, res) {
-	// get list of packages asynchronously
+	// get list of archive files available in the archive repo path
   var getDatasets = function() {
     var deferred = Q.defer();
     var datasetsApi = config.dataset_manager.host + config.dataset_manager.API.datasets + '/arch';
@@ -135,6 +138,10 @@ router.get('/:id', cors(corsOptions), function(req, res) {
  * {"policy":"size","max_size_gigabytes":10}
  */
 router.options('/:id', cors()); // enable pre-flight request for PUT request
+/**
+ * Moves file from archive location to HDFS by deriving target source and partition from the file name.
+ *
+ */
 router.put('/retrieve', cors(), function(req, res) {
   logger.info('Got put request: ' + JSON.stringify(req.body));
   var message = req.body;
